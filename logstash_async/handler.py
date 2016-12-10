@@ -7,6 +7,7 @@ from logging import Handler
 
 from six import string_types
 
+from logstash_async.constants import TIMEOUT_SENDING_MESSAGES_AT_TERMINATION
 from logstash_async.formatter import LogstashFormatter
 from logstash_async.utils import import_string, safe_log_via_print
 from logstash_async.worker import LogProcessingWorker
@@ -26,7 +27,6 @@ class AsynchronousLogstashHandler(Handler):
     :param keyfile: The path to client side SSL key file (default is None).
     :param certfile: The path to client side SSL certificate file (default is None).
     :param ca_certs: The path to the file containing recognized CA certificates.
-    :param database_path: The path to the file containing queued events.
     :param enable Flag to enable log processing (default is True, disabling
                   might be handy for local testing, etc.)
     """
@@ -36,7 +36,7 @@ class AsynchronousLogstashHandler(Handler):
     # ----------------------------------------------------------------------
     def __init__(self, host, port=5959, transport='logstash_async.transport.TcpTransport',
                  ssl_enable=False, ssl_verify=True, keyfile=None, certfile=None, ca_certs=None,
-                 database_path=':memory:', enable=True):
+                 enable=True):
         super(AsynchronousLogstashHandler, self).__init__()
         self._host = host
         self._port = port
@@ -46,7 +46,6 @@ class AsynchronousLogstashHandler(Handler):
         self._keyfile = keyfile
         self._certfile = certfile
         self._ca_certs = ca_certs
-        self._database_path = database_path
         self._enable = enable
         self._transport = None
         self._setup_transport()
@@ -99,8 +98,7 @@ class AsynchronousLogstashHandler(Handler):
             ssl_verify=self._ssl_verify,
             keyfile=self._keyfile,
             certfile=self._certfile,
-            ca_certs=self._ca_certs,
-            database_path=self._database_path)
+            ca_certs=self._ca_certs)
         AsynchronousLogstashHandler._worker_thread.start()
 
     # ----------------------------------------------------------------------
@@ -136,8 +134,7 @@ class AsynchronousLogstashHandler(Handler):
             self._wait_for_worker_thread()
             self._reset_worker_thread()
             self._close_transport()
-        else:
-            pass
+
 
     # ----------------------------------------------------------------------
     def _trigger_worker_shutdown(self):
@@ -145,7 +142,7 @@ class AsynchronousLogstashHandler(Handler):
 
     # ----------------------------------------------------------------------
     def _wait_for_worker_thread(self):
-        AsynchronousLogstashHandler._worker_thread.join()
+        AsynchronousLogstashHandler._worker_thread.join(TIMEOUT_SENDING_MESSAGES_AT_TERMINATION)
 
     # ----------------------------------------------------------------------
     def _reset_worker_thread(self):

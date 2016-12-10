@@ -11,9 +11,6 @@ from logstash_async.constants import SOCKET_TIMEOUT
 
 
 class UdpTransport(object):
-
-    _keep_connection = False
-
     # ----------------------------------------------------------------------
     def __init__(self, host, port, **kwargs):
         self._host = host
@@ -21,15 +18,15 @@ class UdpTransport(object):
         self._sock = None
 
     # ----------------------------------------------------------------------
-    def send(self, events):
+    def send(self, event):
         # Ideally we would keep the socket open but this is risky because we might not notice
         # a broken TCP connection and send events into the dark.
         # On UDP we push into the dark by design :)
         self._create_socket()
         try:
-            self._send(events)
+            self._send(event)
         finally:
-            self._close()
+            self.close()
 
     # ----------------------------------------------------------------------
     def _create_socket(self, timeout=SOCKET_TIMEOUT):
@@ -41,12 +38,7 @@ class UdpTransport(object):
         self._sock.settimeout(timeout)
 
     # ----------------------------------------------------------------------
-    def _send(self, events):
-        for event in events:
-            self._send_via_socket(event)
-
-    # ----------------------------------------------------------------------
-    def _send_via_socket(self, data):
+    def _send(self, data):
         data_to_send = self._convert_data_to_send(data)
         self._sock.sendto(data_to_send, (self._host, self._port))
 
@@ -61,19 +53,17 @@ class UdpTransport(object):
         return data
 
     # ----------------------------------------------------------------------
-    def _close(self, force=False):
-        if not self._keep_connection or force:
-            if self._sock:
-                self._sock.close()
-                self._sock = None
+    def _close_socket(self):
+        if self._sock:
+            self._sock.close()
+            self._sock = None
 
     # ----------------------------------------------------------------------
     def close(self):
-        self._close(force=True)
+        self._close_socket()
 
 
 class TcpTransport(UdpTransport):
-
     # ----------------------------------------------------------------------
     def __init__(self, host, port, ssl_enable, ssl_verify, keyfile, certfile, ca_certs):
         super(TcpTransport, self).__init__(host, port)

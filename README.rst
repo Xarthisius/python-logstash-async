@@ -10,17 +10,17 @@ About
 -----
 
 This Python logging handler is a fork of
-https://github.com/vklochan/python-logstash.
+https://github.com/eht16/python-logstash-async
 
-It adds the following features:
+It has the following features:
 
   * Asynchronous transport of log events
-  * Store log events temporarily in a SQLite database until transport
-    to the Logstash server has been successful
-  * Transport of events via TCP and UDP, in the future hopefully via
-    the Beats protocol
+  * Transport of events via TCP and UDP
   * TCP transport optionally SSL-encrypted
   * Special formatter ready to be used in Django projects
+
+Compared to https://github.com/eht16/python-logstash-async, this fork does not try to preserve log statements if
+no connection can be made to logstash.
 
 
 Asynchronous processing
@@ -36,13 +36,6 @@ for network timeouts to the Logstash server or similar.
 So this handler will accept log events and pass them for further
 processing to a separate worker thread which will try to send
 the events to the configured Logstash server asynchronously.
-If sending the events fails, the events are stored in a
-local SQLite database for a later sending attempt.
-
-Whenever the application stops, to be more exact whenever
-Python' logging subsystem is shutdown, the worker thread
-is signaled to send any queued events and clean up itself
-before shutdown.
 
 The sending intervals and timeouts can be configured in the
 ``logstash_async.constants`` module by the corresponding
@@ -54,7 +47,7 @@ Installation
 
 Using pip::
 
-  pip install python-logstash-async
+  pip install git+https://github.com/koendeschacht/python-logstash-async.git
 
 Usage
 -----
@@ -74,7 +67,7 @@ sends Logstash messages using UDP and TCP. For example:
   test_logger = logging.getLogger('python-logstash-logger')
   test_logger.setLevel(logging.INFO)
   test_logger.addHandler(AsynchronousLogstashHandler(
-      host, port, database_path='logstash.db')))
+      host, port)))
   # test_logger.addHandler(AsynchronousLogstashHandler(host, port))
 
   test_logger.error('python-logstash-async: test logstash error message.')
@@ -141,7 +134,6 @@ Modify your ``settings.py`` to integrate ``python-logstash-async`` with Django's
             'ca_certs': 'etc/ssl/certs/logstash_ca.crt',
             'certfile': '/etc/ssl/certs/logstash.crt',
             'keyfile': '/etc/ssl/private/logstash.key',
-            'database_path': '{}/logstash.db'.format(PROJECT_ROOT),
         },
     },
     'loggers': {
@@ -241,9 +233,6 @@ ca_certs
     (default: None)
     Only used for `logstash_async.transport.TcpTransport`.
 
-database_path
-    The path to the file containing queued events (default: ':memory:')
-
 enable
     Flag to enable log processing (default is True, disabling
     might be handy for local testing, etc.)
@@ -304,18 +293,11 @@ SOCKET_TIMEOUT
     Timeout in seconds for TCP connections (default: 5.0)
 
 QUEUE_CHECK_INTERVAL
-    Interval in seconds to check the internal queue for new messages
-    to be cached in the database (default: 2.0)
+    Interval in seconds to check the internal queue for new messages (default: 0.2)
 
-QUEUED_EVENTS_FLUSH_INTERVAL
-    Interval in seconds to send cached events from the database
-    to Logstash (default 10.0)
-
-QUEUED_EVENTS_FLUSH_COUNT
-    Count of cached events to send cached events from the database
-    to Logstash; events are sent to Logstash whenever
-    `QUEUED_EVENTS_FLUSH_COUNT` or `QUEUED_EVENTS_FLUSH_INTERVAL` is reached,
-    whatever happens first (default 50)
+TIMEOUT_SENDING_MESSAGES_AT_TERMINATION
+    When the program terminates, any remaining log messages are still send to logstash. This constant defines
+    for how many seconds the handler can still send messages before terminating (default: 2.0)
 
 
 Example Logstash Configuration

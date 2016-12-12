@@ -79,7 +79,7 @@ class LogProcessingWorker(Thread):
                     return
                 if not self._cant_reach_logstash:
                     self._safe_log("exception", "Failed to reach logstash."
-                                   + "Log messages will be lost until connection is re-established.")
+                                   + " Log messages will be lost until connection is re-established.")
                     self._cant_reach_logstash = True
 
     # ----------------------------------------------------------------------

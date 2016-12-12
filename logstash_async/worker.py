@@ -78,7 +78,7 @@ class LogProcessingWorker(Thread):
                 if self._shutdown_requested():
                     return
                 if not self._cant_reach_logstash:
-                    self._safe_log("exception", "Failed to reach logstash."
+                    self._safe_log("exception", ("Failed to reach logstash at %s:%s." % (self._host, self._port))
                                    + " Log messages will be lost until connection is re-established.")
                     self._cant_reach_logstash = True
 
